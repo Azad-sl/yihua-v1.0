@@ -1,5 +1,50 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <rect width="64" height="64" rx="14" fill="#B4432E"/>
-  <path d="M16 33.5h32" stroke="#FFF7EE" stroke-width="7" stroke-linecap="round"/>
-  <path d="M32 33.5V47" stroke="#FFF7EE" stroke-width="7" stroke-linecap="round" opacity="0"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <radialGradient id="mistA" cx="35%" cy="65%" r="55%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.95"/>
+      <stop offset="60%" stop-color="#ffffff" stop-opacity="0.45"/>
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="mistB" cx="70%" cy="55%" r="45%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.85"/>
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="soft" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="10"/>
+    </filter>
+    <filter id="soft2" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="4"/>
+    </filter>
+    <clipPath id="frameClip">
+      <rect x="118" y="118" width="276" height="246" rx="34"/>
+    </clipPath>
+  </defs>
+
+  <!-- 陶土色圆角底 -->
+  <rect x="0" y="0" width="512" height="512" rx="112" fill="#A8552F"/>
+
+  <!-- 画框内水墨山水 -->
+  <g clip-path="url(#frameClip)">
+    <ellipse cx="290" cy="330" rx="200" ry="90" fill="url(#mistA)" filter="url(#soft)"/>
+    <ellipse cx="150" cy="390" rx="160" ry="80" fill="url(#mistB)" filter="url(#soft)"/>
+    <path d="M118 340 Q170 270 215 320 Q250 280 295 330 L295 364 L118 364 Z"
+          fill="#ffffff" opacity="0.75" filter="url(#soft2)"/>
+    <path d="M180 364 L255 235 L300 300 L330 262 L394 364 Z"
+          fill="#ffffff" opacity="0.9" filter="url(#soft2)"/>
+    <path d="M118 364 L180 300 L225 340 L275 295 L340 364 Z"
+          fill="#ffffff"/>
+    <ellipse cx="256" cy="382" rx="150" ry="26" fill="#ffffff" opacity="0.5" filter="url(#soft)"/>
+  </g>
+
+  <!-- 画框：右上开口，衔接 AI 星芒 -->
+  <path d="M330 118 L152 118 A34 34 0 0 0 118 152 L118 330 A34 34 0 0 0 152 364 L360 364 A34 34 0 0 0 394 330 L394 250"
+        fill="none" stroke="#ffffff" stroke-width="14" stroke-linecap="round"/>
+
+  <!-- AI 四芒星 -->
+  <g transform="translate(398,238)">
+    <path d="M0 -34 C4 -12 12 -4 34 0 C12 4 4 12 0 34 C-4 12 -12 4 -34 0 C-12 -4 -4 -12 0 -34 Z"
+          fill="#ffffff"/>
+    <path d="M22 -22 C24 -14 28 -10 36 -8 C28 -6 24 -2 22 6 C20 -2 16 -6 8 -8 C16 -10 20 -14 22 -22 Z"
+          fill="#ffffff" opacity="0.9" transform="translate(10,-10) scale(0.6)"/>
+  </g>
 </svg>
