@@ -18,13 +18,18 @@
     lastRun: null,
   };
 
-  var BUSY_WORDS = [
-    "正在理解你的描述…",
-    "正在构思画面…",
-    "正在运笔起稿…",
-    "正在晕染上色…",
-    "正在细节刻画…",
-    "即将完成…",
+  /* 绘制过程分阶段提示（GPT 官网同款体验）：随时间推进文案 + 进度条 */
+  var STAGES = [
+    { t: 0,   w: "正在把你的描述交给画师…" },
+    { t: 3,   w: "正在研墨调色…" },
+    { t: 8,   w: "正在构思画面与构图…" },
+    { t: 15,  w: "正在勾勒线条与轮廓…" },
+    { t: 24,  w: "正在铺设底色与光影…" },
+    { t: 36,  w: "正在刻画细节与纹理…" },
+    { t: 55,  w: "正在调整整体气韵…" },
+    { t: 75,  w: "快完成了，正在最后润色…" },
+    { t: 100, w: "大画幅耗时较长，请耐心稍候…" },
+    { t: 135, w: "仍在绘制中…若太久无果，可稍后重试或换一条通道" },
   ];
 
   /* ---------------- 工具 ---------------- */
@@ -413,26 +418,72 @@
     $("generateBtn").disabled = b;
     $("generateBtn").querySelector(".btn-label").textContent = b ? "绘制中…" : "开始创作";
     $("busyBox").hidden = !b;
-    if (!b) {
-      clearInterval(busyTimer);
-      $("imgWrap").hidden = state.current ? false : true;
-    } else {
+    clearInterval(busyTimer);
+    if (b) {
+      // 修复：首次生成时结果区默认隐藏，导致绘制提示看不见 —— 这里主动展开并滚动到位
+      $("resultZone").hidden = false;
       $("imgWrap").hidden = true;
+      try { $("resultZone").scrollIntoView({ behavior: "smooth", block: "nearest" }); } catch (e) {}
+
+      // 占位画布随所选画幅变化（1:1 / 16:9 / 9:21 …）
+      var ar = busyAspect();
+      var canvas = $("busyCanvas");
+      canvas.style.aspectRatio = ar.w + " / " + ar.h;
+      canvas.style.width = Math.round(Math.min(430, 320 * ar.w / ar.h)) + "px";
+
       busyStart = Date.now();
-      busyIdx = 0;
-      $("busyWord").textContent = BUSY_WORDS[0];
-      $("busyTimer").textContent = "已用时 0 秒 · 生成约需 10–60 秒，请稍候";
-      clearInterval(busyTimer);
-      busyTimer = setInterval(function () {
-        var sec = Math.round((Date.now() - busyStart) / 1000);
-        var idx = Math.min(BUSY_WORDS.length - 1, Math.floor(sec / 9));
-        $("busyWord").textContent = BUSY_WORDS[idx];
-        $("busyTimer").textContent = "已用时 " + sec + " 秒 · 生成约需 10–60 秒，请稍候";
-      }, 1000);
+      busyRate = 0.9 + Math.random() * 0.35; // 每次随机快慢，更像真实绘制
+      busyLastSec = -1;
+      $("busyWord").textContent = STAGES[0].w;
+      $("busyTimer").textContent = "已用时 0 秒 · 通常 10–60 秒，请稍候";
+      setProgress(0);
+      busyTimer = setInterval(busyTick, 200);
+    } else {
+      if (state.current) {
+        $("resultZone").hidden = false;
+        $("imgWrap").hidden = false;
+      } else {
+        // 失败且没有历史作品时，收起空的结果区，避免留下一块空白
+        $("resultZone").hidden = true;
+      }
     }
   }
 
-  var busyTimer = null, busyStart = 0, busyIdx = 0;
+  var busyTimer = null, busyStart = 0, busyRate = 1, busyLastSec = -1;
+
+  function busyAspect() {
+    var r = state.cfg && state.cfg.ratios && state.cfg.ratios.find(function (x) { return x.id === state.ratio; });
+    if (!r || !r.w || !r.h) return { w: 1, h: 1 };
+    return { w: r.w, h: r.h };
+  }
+
+  function setProgress(p) {
+    p = Math.max(0, Math.min(100, p));
+    $("busyFill").style.width = p + "%";
+    $("busyPct").textContent = Math.round(p) + "%";
+    var bar = $("busyBar");
+    if (bar) bar.setAttribute("aria-valuenow", String(Math.round(p)));
+  }
+
+  function busyTick() {
+    var sec = (Date.now() - busyStart) / 1000;
+    // 前 2 秒快速推进到 14%，随后按指数曲线缓慢爬升，封顶 94%（完成时直接出图）
+    var p = sec < 2 ? 14 * sec / 2 : 14 + 81 * (1 - Math.exp(-(sec - 2) / (34 / busyRate)));
+    setProgress(Math.min(94, p));
+
+    var s = Math.floor(sec);
+    var word = STAGES[0].w;
+    for (var i = 0; i < STAGES.length; i++) {
+      if (s >= STAGES[i].t) word = STAGES[i].w;
+    }
+    $("busyWord").textContent = word;
+
+    if (s !== busyLastSec) {
+      busyLastSec = s;
+      $("busyTimer").textContent = "已用时 " + s + " 秒" +
+        (s < 60 ? " · 通常 10–60 秒，请稍候" : " · 这张比较慢，请耐心稍候");
+    }
+  }
 
   function showStatus(kind, html) {
     var el = $("status");
@@ -486,9 +537,7 @@
     } catch (e) {
       clearTimeout(timeout);
       setBusy(false);
-      var aborted = e && (e.name === "AbortError");
       showStatus("err", "生成超时或网络中断。生成通常需要 10–60 秒，可稍作等待后重试，或更换模型 / 通道。");
-      if (aborted) $("busyBox").hidden = true;
       return;
     }
     clearTimeout(timeout);
